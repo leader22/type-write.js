@@ -1,4 +1,4 @@
 type-write.js
 ===============
 
-See [Sample](http://labs.lealog.net/type-write-sample/);
+See this [example](http://labs.lealog.net/type-write-sample/). ;D
