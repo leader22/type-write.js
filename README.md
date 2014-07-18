@@ -15,6 +15,7 @@ var typeWrite = new TypeWrite({
   typeWriteDuration: 50,
   onTypeWrite: function(char) {
     // => 50ms間隔で、ココに1文字ずつ返ってくる
+    // => 'あ', 'い', 'う', 'え', 'お', '<br>', 'か', 'き', 'く', 'け', 'こ'
     console.log(char);
   }
 });
@@ -30,8 +31,7 @@ var typeWrite = new TypeWrite({
   isResult: true
 });
 
-
-var resultText = typeWrite.start(); // => 'あいうえおかきくけこ'
+var resultText = typeWrite.start(); // => 'あいうえお<br>かきくけこ'
 ```
 
 ## 初期化オプション
