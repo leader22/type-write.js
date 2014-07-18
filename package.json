@@ -5,7 +5,7 @@
   "main": "dist/type-write.min.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/leader22/type-write.js",
+    "url": "https://github.com/leader22/type-write.js"
   },
   "author": "leader22 <y.sugiura.0316@gmail.com>",
   "license": "MIT",
