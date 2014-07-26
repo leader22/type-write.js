@@ -1,4 +1,5 @@
-;(function (global, undefined) {
+;
+(function (global, undefined) {
     'use strict';
 
     // Const and settings
@@ -6,11 +7,11 @@
 
     var DEFAULT_VISIBLE_CLASS_NAME = 'is-visible';
     var DEFAULT_META_CHAR = {
-        START_TAG:      '{',
-        END_TAG:        '}',
-        BR:             '|',
-        START_WRAP:     '<',
-        END_WRAP:       '>'
+        START_TAG:  '{',
+        END_TAG:    '}',
+        BR:         '|',
+        START_WRAP: '<',
+        END_WRAP:   '>'
     };
     var DEFAULT_DURATION = 80;
 
@@ -23,7 +24,7 @@
      *
      * @class CSSTypeWrite
      */
-    var CSSTypeWrite = function(options) {
+    var CSSTypeWrite = function (options) {
         // オプションの内容は後述
         this.initialize(options);
         return this;
@@ -54,18 +55,19 @@
          * @param {Function} options.onEnd
          *    文字送りが全て終わった後のフック
          */
-        initialize: function(options) {
-            this._text    = options.text || '';
-            this._destElm = __getElement(options.destElm);
+        initialize: function (options) {
+            this._text     = options.text || '';
+            this._destElm  = __getElement(options.destElm);
+            this._isParsed = options.isParsed || false;
 
             this._metaChar          = __easyExtend(options.metaChar, DEFAULT_META_CHAR);
             this._typeWriteDuration = options.typeWriteDuration || DEFAULT_DURATION;
-            this._visibleClassName  = options.visibleClassName  || DEFAULT_VISIBLE_CLASS_NAME;
+            this._visibleClassName  = options.visibleClassName || DEFAULT_VISIBLE_CLASS_NAME;
 
-            this._forceStop   = options.forceStop   || function() {};
-            this._onStart     = options.onStart     || null;
+            this._forceStop   = options.forceStop || function () {};
+            this._onStart     = options.onStart || null;
             this._onTypeWrite = options.onTypeWrite || null;
-            this._onEnd       = options.onEnd       || null;
+            this._onEnd       = options.onEnd || null;
 
             return this;
         },
@@ -75,8 +77,9 @@
          *
          * @name start
          */
-        start: function() {
-            this.setPage();
+        start: function () {
+            this._setPage();
+
             var charElms = this._destElm.getElementsByTagName('span'),
                 i = 0,
                 l = charElms.length,
@@ -86,36 +89,40 @@
             __show();
 
             function __show() {
-              timer = setTimeout(function() {
-                var isForceStop = that._forceStop();
+                timer = setTimeout(function () {
+                    var isForceStop = that._forceStop();
 
-                if (i === 0) {
-                    that._onStart && that._onStart();
-                }
+                    if (i === 0) {
+                        that._onStart && that._onStart();
+                    }
 
-                if (i === l || isForceStop) {
-                  clearTimeout(timer);
-                  timer = null;
-                  console.log('FINISH');
+                    if (i === l || isForceStop) {
+                        clearTimeout(timer);
+                        timer = null;
+                        console.log('FINISH');
 
-                  if (isForceStop) {
-                    that._destElm.className += ' '+that._visibleClassName;
-                  }
+                        if (isForceStop) {
+                            that._destElm.className += ' ' + that._visibleClassName;
+                        }
 
-                  that._onEnd && that._onEnd();
-                  return;
-                }
+                        that._onEnd && that._onEnd();
+                        return;
+                    }
 
-                charElms[i++].className += ' '+that._visibleClassName;
-                that._onTypeWrite && that._onTypeWrite(charElms[i]);
+                    charElms[i++].className += ' ' + that._visibleClassName;
+                    that._onTypeWrite && that._onTypeWrite(charElms[i]);
 
-                __show();
-              }, that._typeWriteDuration);
+                    __show();
+                }, that._typeWriteDuration);
             }
         },
 
-        setPage: function() {
-            this._destElm.innerHTML = this.parse();
+        _setPage: function () {
+            if (this._isParsed) {
+                this._destElm.innerHTML = this._text;
+            } else {
+                this._destElm.innerHTML = this.parse();
+            }
         },
 
         /**
@@ -125,17 +132,18 @@
          * @return {String}
          *     パース済のテキスト
          */
-        parse: function() {
+        parse: function () {
             var that = this;
             var META_CHARA = that._metaChar;
 
             // 処理に必要な変数をまとめて初期化
             var textArr = that._text.split(''),
-                i = 0,    // 何文字目まで表示してるかカウンター
+                i = 0, // 何文字目まで表示してるかカウンター
                 parseTag, // 特殊文字をパース中であるフラグ
-                isWrap,   // 文字をラップするかどうかフラグ
+                isWrap, // 文字をラップするかどうかフラグ
                 wrapClass = '', // ラップするときのクラス名、下の%に入る
-                wrapStart = '<span class="%">', wrapEnd = '</span>',
+                wrapStart = '<span class="%">',
+                wrapEnd = '</span>',
                 resultText = ''; // ここにパース済のテキスト
 
             // 処理開始
@@ -149,7 +157,9 @@
              */
             function __parse() {
                 // 最後まで来たら終わる
-                if (i === textArr.length) { return; }
+                if (i === textArr.length) {
+                    return;
+                }
 
                 // 1文字ずつ取り出していく
                 var char = textArr[i++];
@@ -164,20 +174,20 @@
                     case META_CHARA.END_TAG:
                         parseTag = false;
                         break;
-
+                        
                     case META_CHARA.BR:
                         resultText += '<br>';
                         break;
-
+                        
                     case META_CHARA.START_WRAP:
                         isWrap = true;
                         break;
-
+                        
                     case META_CHARA.END_WRAP:
                         isWrap = false;
                         wrapClass = '';
                         break;
-
+                        
                     default:
                         break;
                     }
@@ -188,7 +198,7 @@
                         case META_CHARA.START_WRAP:
                             break;
 
-                        // それ以外はラップ用クラスなので保存
+                            // それ以外はラップ用クラスなので保存
                         default:
                             wrapClass = wrapClass + char;
                             break;
@@ -224,10 +234,9 @@
             function __wrap(char, wrapClass) {
                 var str = '';
                 if (wrapClass) {
-                  str = '<span class="%">'.replace('%', wrapClass) + char + '</span>';
-                }
-                else {
-                  str = '<span>' + char + '</span>';
+                    str = '<span class="%">'.replace('%', wrapClass) + char + '</span>';
+                } else {
+                    str = '<span>' + char + '</span>';
                 }
 
                 return str;
@@ -238,7 +247,7 @@
 
     // Exports
     if (__isAMD) {
-        define([], function() {
+        define([], function () {
             return CSSTypeWrite;
         });
     } else {
@@ -256,6 +265,7 @@
 
         return ret;
     }
+
     function __getElement(any) {
         var elm;
         if (typeof any === 'string') {
