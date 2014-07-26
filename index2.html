@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>CSSCSSTypeWrite.js | Sample</title>
+<style>
+  .blue {
+    color: blue;
+  }
+  .green {
+    color: green;
+  }
+  .italic {
+    font-style: italic;
+  }
+  #output1 span,
+  #output2 span {
+    visibility: hidden;
+  }
+  #output1 span.is-visible,
+  #output1.is-visible span,
+  #output2.is-visible span {
+    visibility: visible;
+  }
+</style>
+</head>
+<body>
+<h1>type-write.js sample</h1>
+
+<div id="output1">ここに文字が出るよ</div>
+タイプ速度<input type="text" id="duration" value="50" size="4">ms
+<button id="start1">Start</button>
+<button id="stop1">ForceStop</button>
+
+<hr>
+
+<div id="output2" class="is-visible">ここに文字が出るよ</div>
+<button id="start2">Result</button>
+
+<script type="text/javascript" src="src/css-type-write.js">
+</script>
+<script>
+;(function(global) {
+  'use strict';
+
+  var doc = global.document;
+  var $ = doc.querySelector.bind(doc)
+
+  var outputElm1 = $('#output1');
+  var duration   = $('#duration');
+  var startBtn1  = $('#start1');
+  var stopBtn1   = $('#stop1');
+  var outputElm2 = $('#output2');
+  var startBtn2  = $('#start2');
+  var stop1Frag  = false;
+
+  var sampleText = 'あのイーハトーヴォのすきとおった風、{|}夏でも底に冷たさをもつ{<blue}青い{>}そら、{|}うつくしい{<green}森{>}で飾られたモリーオ市、郊外のぎらぎらひかる草の{<italic blue}波{>}。'
+
+  // 1
+  stopBtn1.addEventListener('click', function() { stop1Frag = true; }, false);
+  startBtn1.addEventListener('click', function() {
+    var typeDuration = duration.value;
+
+    var typeWrite1 = new CSSTypeWrite({
+      text: sampleText,
+      typeWriteDuration: typeDuration,
+      destElm: outputElm1,
+      forceStop: function() { return stop1Frag; },
+      onStart: function() {
+        outputElm1.innerHTML = 'はじまるよー<hr>' + outputElm1.innerHTML;
+      },
+      onEnd: function() {
+        outputElm1.innerHTML += '<hr>ふぃにっしゅ！';
+      }
+    }).start();
+  }, false);
+
+
+  // 2
+  var typeWrite2 = new CSSTypeWrite({
+    text: sampleText
+  });
+
+  startBtn2.addEventListener('click', function() {
+    outputElm2.innerHTML = typeWrite2.parse();
+  }, false);
+
+}(window));
+</script>
+</body>
+</html>
