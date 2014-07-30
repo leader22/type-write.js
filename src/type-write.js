@@ -1,143 +1,116 @@
-;(function (global, undefined) {
+(function (global, undefined) {
     'use strict';
 
-    // Const and settings
-    var __isAMD = (typeof global.define === 'function') && global.define.amd;
-    var DEFAULT_META_CHAR = {
-        START_TAG:      '{',
-        END_TAG:        '}',
-        BR:             '|',
-        START_WRAP:     '<',
-        END_WRAP:       '>'
-    };
-
-
-    // Class definitions
     /**
-     * タイプライターのように、一連の文字列を一文字ずつ出力する
-     * 独自のタグを含むテキストをパースして、任意のタイミングで出力する
+     * Defaults and constants.
      *
-     * @class TypeWrite
      */
-    var TypeWrite = function(options) {
-        // オプションの内容は後述
+    var DEFAULT_OPTIONS = {
+        textElm:          '#text',
+        prefix:           ['webkit', 'moz', 'o', 'ms'],
+        typeWriteSetting: null,
+        metaChara:        null,
+        onStart:          null,
+        onEnd:            null
+    };
+    var DEFAULT_TYPEWRITE_OPTIONS = {
+        talkDelay:  0.04,
+        duration:   0.5,
+        commaWait:  1,
+        periodWait: 2
+    };
+    var DEFAULT_META_CHAR = {
+        START_TAG:  '{',
+        END_TAG:    '}',
+        BR:         '|',
+        START_WRAP: '<',
+        END_WRAP:   '>'
+    };
+    var COMMA_RE = /[,\u3001\uFF64]/;
+    var PERIOD_RE = /[\.\u3002\uFF61]/;
+
+    /**
+     * Class implementations.
+     *
+     */
+    var TypeWrite = function (options) {
         this.initialize(options);
+        return this;
     };
 
     TypeWrite.prototype = {
         constructor: TypeWrite,
-        /**
-         * 初期化処理
-         *
-         * @name initialize
-         * @param {Object} options
-         *    初期化設定
-         * @param {String} options.text
-         *    処理したい文字列
-         * @param {Boolean} options.isResult
-         *    パースだけ実行して、結果だけ欲しいならtrue
-         * @param {Number} options.typeWriteDuration
-         *    文字送りのタイミング
-         * @param {Object} options.metaChar
-         *    独自のタグに使う区切り文字など
-         * @param {Function} options.forceStop
-         *    実行結果がtrueになると、文字送りを強制的に終わらせる
-         * @param {Function} options.onStart
-         *    文字送りを開始する前のフック
-         * @param {Function} options.onTypeWrite
-         *    文字送りされる度に呼ばれるフックで、送られた文字が引数として渡る
-         * @param {Function} options.onEnd
-         *    文字送りが全て終わった後のフック
-         */
-        initialize: function(options) {
-            this._text      = options.text     || '';
-            this._isResult  = options.isResult || false;
+        initialize: function (options) {
+            this._setting          = __extend(DEFAULT_OPTIONS, options);
+            this._typeWriteSetting = __extend(DEFAULT_TYPEWRITE_OPTIONS, this._setting.typeWriteSetting);
+            this._metaChar         = __extend(DEFAULT_META_CHAR, this._setting.metaChara);
+            this._textElm = __getElement(this._setting.textElm);
 
-            this._metaChar = __extend(options.metaChar, DEFAULT_META_CHAR);
-            this._typeWriteDuration = options.typeWriteDuration || 80;
+            this._onStart = this._setting.onStart || null;
+            this._onEnd   = this._setting.onEnd   || null;
 
-            this._forceStop   = options.forceStop   || __nope;
-            this._onStart     = options.onStart     || __nope;
-            this._onTypeWrite = options.onTypeWrite || __nope;
-            this._onEnd       = options.onEnd       || __nope;
+            this._onEndTimer = null;
+            console.log('TypeWrite: initialize', this);
         },
-        /**
-         * 処理開始メソッド
-         *
-         * @name start
-         * @return {String}
-         *     初期化時にisResultがtrueにした場合のみ、処理後のテキストが返る
-         */
-        start: function() {
-            var that = this;
-            var META_CHARA = that._metaChar;
 
-            // 即パース後が欲しいケース
-            var isResult = that._isResult;
-            var resultText = '';
-            if (isResult) {
-                that._onTypeWrite = function(char) {
-                    resultText = resultText + char;
-                };
+        start: function(text, setting) {
+            console.log('TypeWrite: start', text, setting);
+            if (setting) {
+                this._typeWriteSetting = __extend(this._setting.typeWriteSetting, setting);
             }
+            this._textElm.innerHTML = '';
+            this._parseAndTypeWrite(text);
+        },
 
-            // 処理に必要な変数をまとめて初期化
-            var textArr = that._text.split(''),
-                i = 0,    // 何文字目まで表示してるかカウンター
-                timer,    // 使いまわす用タイマー
-                parseTag, // 特殊文字をパース中であるフラグ
-                isWrap,   // 文字をラップするかどうかフラグ
-                wrapClass = '', // ラップするときのクラス名、下の%に入る
-                wrapStart = '<span class="%">', wrapEnd = '</span>';
+        skip: function() {
+            console.log('TypeWrite: skip');
+            this._resetTransition();
+        },
 
-            // 処理開始
-            __type();
+        _parseAndTypeWrite: function (text) {
+            console.log('TypeWrite: parseAndTypeWrite', text);
+            var META_CHARA        = this._metaChar;
+            var TYPEWRITE_SETTING = this._typeWriteSetting;
 
-            // 即パース時は同期実行するのでreturnしてあげる
-            if (isResult) { return resultText; }
+            var isTagParsing = false,
+                isWraping    = false,
+                isLastOne    = false,
+                wrapClass = '',
+                char,
+                wait = 0,
+                i = 0,
+                l = text.length,
+                lastCount = l - 1;
 
-            /**
-             * ループされるメインのパーサー
-             *
-             * @name __type
-             */
-            function __type() {
-                // 最初にやっておきたいことがあれば
+            for (; i < l; i++) {
+                char = text[i];
+
                 if (i === 0) {
-                    that._onStart && that._onStart();
-                }
-                // 最後まで来たら or 強制終了されたら終わる
-                if (i === textArr.length || that._forceStop()) {
-                    clearTimeout(timer);
-                    timer = null;
-                    that._onEnd && that._onEnd();
-                    return;
+                    this._onStart && this._onStart();
                 }
 
-                // 1文字ずつ取り出していく
-                var char = textArr[i++];
-
+                // 独自タグ処理開始
                 if (char === META_CHARA.START_TAG) {
-                    parseTag = true;
+                    isTagParsing = true;
                 }
 
-                // 独自タグ処理中は、出力をやめる
-                if (parseTag) {
+                // 独自タグ処理中なので、改行以外はループをcontinue
+                if (isTagParsing) {
                     switch (char) {
                     case META_CHARA.END_TAG:
-                        parseTag = false;
+                        isTagParsing = false;
                         break;
 
                     case META_CHARA.BR:
-                        that._onTypeWrite('<br>');
+                        this._addBr();
                         break;
 
                     case META_CHARA.START_WRAP:
-                        isWrap = true;
+                        isWraping = true;
                         break;
 
                     case META_CHARA.END_WRAP:
-                        isWrap = false;
+                        isWraping = false;
                         wrapClass = '';
                         break;
 
@@ -146,61 +119,163 @@
                     }
 
                     // 独自タグを処理中で、Wrap対象があればパース
-                    if (isWrap && parseTag) {
+                    if (isWraping && isTagParsing) {
                         switch (char) {
+                        // ラップ開始タグは、独自タグのすぐ後に来るので無視
                         case META_CHARA.START_WRAP:
                             break;
 
                         // それ以外はラップ用クラスなので保存
                         default:
-                            wrapClass = wrapClass + char;
+                            wrapClass += char;
                             break;
                         }
                     }
 
-                    // 独自タグが終わるまでやりなおす
-                    return __type();
+                    continue;
                 }
 
-                // 独自タグ処理をしてない時は、出力する
-                // ラッパーの指定(主にフォント)があれば、包んで出力
-                if (isWrap) {
-                    that._onTypeWrite(wrapStart.replace('%', wrapClass) + char + wrapEnd);
+                // 最後の文字ならフラグを立てて
+                isLastOne = (i === lastCount);
+                // ここでDOMに落ちる
+                if (isWraping) {
+                    this._addTransitionSpan(char, i, wait, wrapClass, isLastOne);
                 } else {
-                    that._onTypeWrite(char);
+                    this._addTransitionSpan(char, i, wait, null, isLastOne);
                 }
 
-                // 即パースしたい場合は同期で実行
-                if (isResult) {
-                    __type();
-                } else {
-                    timer = setTimeout(__type, that._typeWriteDuration);
+                // ディレイ系文字なら次の文字を遅延させる
+                // この計算は文字を送り出した後じゃないとダメ
+                if (COMMA_RE.test(char)) {
+                    wait += TYPEWRITE_SETTING.commaWait;
+                } else if (PERIOD_RE.test(char)) {
+                    wait += TYPEWRITE_SETTING.periodWait;
                 }
             }
+        },
+
+        _addBr: function() {
+            var br = document.createElement('br');
+            this._textElm.appendChild(br);
+        },
+
+        _addTransitionSpan: function (character, num, wait, wrapClass, isLastOne) {
+            var TYPEWRITE_SETTING = this._typeWriteSetting;
+            var delay = (TYPEWRITE_SETTING.talkDelay * (num + 1)) + wait;
+            var transition = [
+                'opacity',
+                TYPEWRITE_SETTING.duration + 's',
+                'linear',
+                delay + 's'
+            ].join(' ');
+
+            var span = document.createElement('span');
+            span.textContent = character;
+            span.style.opacity = 0;
+            this._applyPrefixStyle(span, 'transition', transition);
+            if (wrapClass) { span.className = wrapClass; }
+
+            this._textElm.appendChild(span);
+            setTimeout(function () {
+                span.style.opacity = 1;
+            });
+
+            // 最後の文字の場合、onEndのコールバックを発火する
+            // 最後の文字がtransitionし終わったであろう頃に発火
+            if (isLastOne) {
+                var timeoutDelay = 1000 * (TYPEWRITE_SETTING.duration + delay);
+                var that = this;
+                that._onEndTimer = setTimeout(function() {
+                    that._onEnd && that._onEnd();
+                    that._dispose();
+                    console.log('TypeWrite: textParser -> finish with callback delay ->', timeoutDelay);
+                }, timeoutDelay);
+            }
+
+        },
+
+        _resetTransition: function () {
+            var child = this._textElm.childNodes;
+            for (var i in child) {
+                /*jshint forin: false*/
+                if (child[i].nodeType === 1) {
+                    this._applyPrefixStyle(child[i], 'transition', '');
+                }
+            }
+            this._onEnd && this._onEnd();
+            this._dispose();
+        },
+
+        _applyPrefixStyle: function(elm, prop, value) {
+            // No prefix
+            elm.style[prop] = value;
+
+            // Vendor prefix
+            var supports = this._setting.prefix;
+            prop = __toPascalCase(prop);
+            var i = 0, l = supports.length;
+            for (; i < l; i++) {
+                elm.style[supports[i]+prop] = value;
+            }
+        },
+
+        _dispose: function() {
+            console.log('TypeWrite: dispose');
+            clearTimeout(this._onEndTimer);
+            this._onEndTimer = null;
         }
     };
 
 
-    // Exports
+    /**
+     * Exports
+     * AMD, CommonJS support.
+     *
+     */
+    var __isAMD      = (typeof global.define === 'function') && global.define.amd;
+    var __isCommonJS = (typeof global.exports === 'object') && global.exports;
     if (__isAMD) {
-        define([], function() {
+        global.define([], function () {
             return TypeWrite;
         });
+    } else if (__isCommonJS) {
+        global.exports.TypeWrite = TypeWrite;
     } else {
         global.TypeWrite = TypeWrite;
     }
 
 
-    // Private functions
-    function __nope() {}
-    function __extend(options, defaults) {
-        var ret = defaults;
+    /**
+     * Privates
+     * Just simple implementations.
+     *
+     */
+    function __extend(defaults, options) {
+        options = options || {};
+        var ret     = defaults;
+
         for (var key in options) {
             /*jshint forin: false*/
-            ret[key] = options[key];
+            ret[key] = (options[key] !== undefined) ? options[key]
+                                                    : defaults[key];
         }
 
         return ret;
     }
 
-}(window));
+    function __getElement(any) {
+        var elm;
+        if (typeof any === 'string') {
+            elm = global.document.querySelector(any);
+        } else {
+            elm = any;
+        }
+
+        return elm;
+    }
+
+    function __toPascalCase(text) {
+        return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+    }
+
+})(this.self || global);

@@ -1,6 +1,8 @@
 type-write.js
 ===============
 
+> このv2ブランチは、ソースだけ新しいです！要ドキュメント更新！！
+
 See this [example](http://labs.lealog.net/type-write-sample/). ;D
 
 ## 使い方
