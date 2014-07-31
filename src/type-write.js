@@ -235,11 +235,11 @@
     var __isAMD      = (typeof global.define === 'function') && global.define.amd;
     var __isCommonJS = (typeof global.exports === 'object') && global.exports;
     if (__isAMD) {
-        global.define([], function () {
+        define([], function () {
             return TypeWrite;
         });
     } else if (__isCommonJS) {
-        global.exports.TypeWrite = TypeWrite;
+        module.exports = TypeWrite;
     } else {
         global.TypeWrite = TypeWrite;
     }
