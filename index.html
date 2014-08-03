@@ -18,64 +18,48 @@
 <body>
 <h1>type-write.js sample</h1>
 
-<div id="output1">ここに文字が出るよ</div>
-タイプ速度<input type="text" id="duration" value="50" size="4">ms
-<button id="start1">Start</button>
+タイプ速度<input type="text" id="duration" value="0.08" size="4">s
+<button id="start">Start</button>
+<button id="skip">Skip</button>
 
-<hr>
-
-<div id="output2">ここに文字が出るよ</div>
-<button id="start2">Result</button>
+<div id="output">ここに文字が出るよ</div>
 
 <script type="text/javascript" src="src/type-write.js">
 </script>
 <script>
 ;(function(global) {
-  'use strict';
+    'use strict';
 
-  var doc = global.document;
-  var $ = doc.querySelector.bind(doc)
+    var doc = global.document;
+    var $ = doc.querySelector.bind(doc)
 
-  var outputElm1 = $('#output1');
-  var duration   = $('#duration');
-  var startBtn1  = $('#start1');
-  var outputElm2 = $('#output2');
-  var startBtn2  = $('#start2');
+    var outputElm = $('#output');
+    var duration  = $('#duration');
+    var startBtn  = $('#start');
+    var skipBtn   = $('#skip');
 
-  var sampleText = 'あのイーハトーヴォのすきとおった風、{|}夏でも底に冷たさをもつ{<blue}青い{>}そら、{|}うつくしい{<green}森{>}で飾られたモリーオ市、郊外のぎらぎらひかる草の{<italic blue}波{>}。'
+    var sampleText = 'あのイーハトーヴォのすきとおった風、{|}夏でも底に冷たさをもつ{<blue}青い{>}そら、{|}うつくしい{<green}森{>}で飾られたモリーオ市、郊外のぎらぎらひかる草の{<italic blue}波{>}。'
 
-  // 1
-  startBtn1.addEventListener('click', function() {
-    var typeDuration = duration.value;
-
-    var typeWrite1 = new TypeWrite({
-      text: sampleText,
-      typeWriteDuration: typeDuration,
-      onStart: function() {
-        outputElm1.innerHTML = 'はじまるよー<hr>';
-      },
-      onTypeWrite: function(char) {
-        outputElm1.innerHTML += char;
-      },
-      onEnd: function() {
-        outputElm1.innerHTML += '<hr>ふぃにっしゅ！';
-      }
+    var typeWrite = new TypeWrite({
+        textElm: outputElm,
+        onStart: function() {
+            console.log('START');
+        },
+        onEnd: function() {
+            console.log('END');
+        }
     });
 
-    typeWrite1.start();
-  }, false);
+    startBtn.addEventListener('click', function() {
+        var typeDuration = duration.value;
+        typeWrite.start(sampleText, {
+            talkDelay: typeDuration
+        });
+    }, false);
 
-
-  // 2
-  var typeWrite2 = new TypeWrite({
-    text: sampleText,
-    isResult: true
-  });
-
-  startBtn2.addEventListener('click', function() {
-    var resultText = typeWrite2.start();
-    outputElm2.innerHTML = resultText;
-  }, false);
+    skipBtn.addEventListener('click', function() {
+        typeWrite.skip();
+    }, false);
 
 }(window));
 </script>

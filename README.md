@@ -1,87 +1,18 @@
 type-write.js
 ===============
-
 See this [example](http://labs.lealog.net/type-write-sample/). ;D
 
 ## 使い方
 
-以下の2パターンが主な使い方になると思います。
-
-### 文字送りしつつ使う
+上記のデモと同じファイルがindex.htmlなので、そっち見るほうがはやいかも。
 
 ```javascript
 var typeWrite = new TypeWrite({
-  text: 'あいうえお{|}かきくけこ',
-  typeWriteDuration: 50,
-  onTypeWrite: function(char) {
-    // => 50ms間隔で、ココに1文字ずつ返ってくる
-    // => 'あ', 'い', 'う', 'え', 'お', '<br>', 'か', 'き', 'く', 'け', 'こ'
-    console.log(char);
-  }
+    textElm: outputElm
 });
 
-typeWrite.start();
+typeWrite.start(targetText);
 ```
-
-### 文字送りした結果を使う
-
-```javascript
-var typeWrite = new TypeWrite({
-  text: 'あいうえお{|}かきくけこ',
-  isResult: true
-});
-
-var resultText = typeWrite.start(); // => 'あいうえお<br>かきくけこ'
-```
-
-## 初期化オプション
-
-```javascript
-var typeWrite = new TypeWrite(options);
-```
-
-### options.text
-
-{String} 文字送りしたい文字列
-
-### options.isResult
-
-{Boolean} 結果取得モードかどうか
-
-### options.metaChar
-
-{Object} 独自タグの文字指定
-
-```javascript
-// 初期設定
-var DEFAULT_META_CHAR = {
-  START_TAG:  '{',
-  END_TAG:    '}',
-  BR:         '|',
-  START_WRAP: '<',
-  END_WRAP:   '>'
-};
-```
-### options.typeWriteDuration
-
-{Number} 文字送りのスピード
-
-### options.forceStop
-
-{Function} 毎文字送りのタイミングで実行され、trueになると処理を終了します
-
-### options.onStart
-
-{Function} 文字送り開始前に1度呼ばれます
-
-### options.onTypeWrite
-
-{Function} 毎文字送りのタイミングで実行され、文字送りされた1文字が引数で渡ります
-
-### options.onEnd
-
-{Function} 文字送り終了時(forceStop終了含む)に1度呼ばれます
-
 
 ## 独自タグの書式
 
