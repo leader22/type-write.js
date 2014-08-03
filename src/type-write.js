@@ -1,18 +1,8 @@
 (function (global, undefined) {
     'use strict';
 
-    /**
-     * Defaults and constants.
-     *
-     */
-    var DEFAULT_OPTIONS = {
-        textElm:          '#text',
-        prefix:           ['webkit', 'moz', 'o', 'ms'],
-        typeWriteSetting: null,
-        metaChara:        null,
-        onStart:          null,
-        onEnd:            null
-    };
+    // 定数、初期化オプション
+    // -----------------------------------------------------------------------------
     var DEFAULT_TYPEWRITE_OPTIONS = {
         talkDelay:  0.04,
         duration:   0.5,
@@ -26,12 +16,30 @@
         START_WRAP: '<',
         END_WRAP:   '>'
     };
+    var DEFAULT_OPTIONS = {
+        textElm:          '#text',
+        prefix:           ['webkit', 'moz', 'o', 'ms'],
+        typeWriteSetting: DEFAULT_TYPEWRITE_OPTIONS,
+        metaChara:        DEFAULT_META_CHAR,
+        onStart:          null,
+        onEnd:            null
+    };
     var COMMA_RE = /[,\u3001\uFF64]/;
     var PERIOD_RE = /[\.\u3002\uFF61]/;
 
+
+
+    // メイン実装
+    // -----------------------------------------------------------------------------
     /**
-     * Class implementations.
+     * 文字送りモジュール
+     * optionsについては後述
      *
+     * ざっくり仕組みとしては、
+     * - 対象となる独自タグ入りのテキストをパースしながらDOMにappend
+     * - opacity: 0でappendし、すぐにopacity: 1することで順に表示していく
+     *
+     * @class TypeWrite
      */
     var TypeWrite = function (options) {
         this.initialize(options);
@@ -40,11 +48,39 @@
 
     TypeWrite.prototype = {
         constructor: TypeWrite,
+        /**
+         * @name initialize
+         * @param {Object} options
+         *     初期化オプション
+         * @param {String|HTMLNode} options.textElm
+         *     文字を表示するDOM要素 or セレクタ
+         * @param {Array[String]} options.prefix
+         *     対応するベンダープレフィックス
+
+         * @param {Object} options.typeWriteSetting
+         *     文字送りに関する設定オブジェクト
+         * @param {Number} options.typeWriteSetting.talkDelay
+         *     文字と文字の表示間隔(単位: 秒)
+         * @param {Number} options.typeWriteSetting.duration
+         *     文字自体の表示スピード(単位: 秒)
+         * @param {Number} options.typeWriteSetting.commaWait
+         *     ',' '、' などカンマの文字で一旦停止する時間(単位: 秒)
+         * @param {Number} options.typeWriteSetting.periodWait
+         *     '.' '。' などピリオドの文字で一旦停止する時間(単位: 秒)
+         *
+         * @param {Object} options.metaChara
+         *     独自タグに使用する文字列(内容はコード参照)
+         *
+         * @param {Function} options.onStart
+         *     文字送りの開始時のフック関数
+         * @param {Function} options.onEnd
+         *     文字送りの終了時のフック関数
+         */
         initialize: function (options) {
             this._setting          = __extend(DEFAULT_OPTIONS, options);
             this._typeWriteSetting = __extend(DEFAULT_TYPEWRITE_OPTIONS, this._setting.typeWriteSetting);
             this._metaChar         = __extend(DEFAULT_META_CHAR, this._setting.metaChara);
-            this._textElm = __getElement(this._setting.textElm);
+            this._textElm          = __getElement(this._setting.textElm);
 
             this._onStart = this._setting.onStart || null;
             this._onEnd   = this._setting.onEnd   || null;
@@ -53,6 +89,15 @@
             console.log('TypeWrite: initialize', this);
         },
 
+        /**
+         * 文字送りをスタートする
+         *
+         * @name start
+         * @param {String} text
+         *     文字送りして表示したいテキスト
+         * @param {Object} setting
+         *     文字送りに関するオプション(内容はinitialize時に渡すものと同じ)
+         */
         start: function(text, setting) {
             console.log('TypeWrite: start', text, setting);
             if (setting) {
@@ -62,11 +107,24 @@
             this._parseAndTypeWrite(text);
         },
 
+        /**
+         * 文字送りを中断し、即座にすべての文字を表示する
+         *
+         * @name skip
+         */
         skip: function() {
             console.log('TypeWrite: skip');
             this._resetTransition();
         },
 
+        /**
+         * 文字送りの実行クラス
+         * 初期化時に与えられた要素に対して文字を入れていく
+         *
+         * @name parseAndTypeWrite
+         * @param {String} text
+         *     文字送りして表示したいテキスト
+         */
         _parseAndTypeWrite: function (text) {
             console.log('TypeWrite: parseAndTypeWrite', text);
             var META_CHARA        = this._metaChar;
@@ -74,7 +132,7 @@
 
             var isTagParsing = false,
                 isWraping    = false,
-                isLastOne    = false,
+                isLastChar    = false,
                 wrapClass = '',
                 char,
                 wait = 0,
@@ -85,6 +143,7 @@
             for (; i < l; i++) {
                 char = text[i];
 
+                // 開始時フックあれば実行
                 if (i === 0) {
                     this._onStart && this._onStart();
                 }
@@ -113,9 +172,6 @@
                         isWraping = false;
                         wrapClass = '';
                         break;
-
-                    default:
-                        break;
                     }
 
                     // 独自タグを処理中で、Wrap対象があればパース
@@ -132,16 +188,17 @@
                         }
                     }
 
+                    // [再掲] 独自タグ処理中なので、改行以外はループをcontinue
                     continue;
                 }
 
                 // 最後の文字ならフラグを立てて
-                isLastOne = (i === lastCount);
+                isLastChar = (i === lastCount);
                 // ここでDOMに落ちる
                 if (isWraping) {
-                    this._addTransitionSpan(char, i, wait, wrapClass, isLastOne);
+                    this._addTransitionSpan(char, i, wait, wrapClass, isLastChar);
                 } else {
-                    this._addTransitionSpan(char, i, wait, null, isLastOne);
+                    this._addTransitionSpan(char, i, wait, null, isLastChar);
                 }
 
                 // ディレイ系文字なら次の文字を遅延させる
@@ -154,12 +211,35 @@
             }
         },
 
+        /**
+         * <br>を出力する
+         *
+         * @name addBr
+         */
         _addBr: function() {
             var br = document.createElement('br');
             this._textElm.appendChild(br);
         },
 
-        _addTransitionSpan: function (character, num, wait, wrapClass, isLastOne) {
+        /**
+         * <span>を出力する
+         * ただし普通のspanではなく、opacityのCSSアニメーションつき
+         * クラス名の付与が必要あればつける
+         * 最後の1文字の場合は、コールバックを仕込む
+         *
+         * @name addTransitionSpan
+         * @param {String} character
+         *     表示する1文字
+         * @param {Number} num
+         *     いま何文字目か
+         * @param {Number} wait
+         *     カンマやピリオド文字で遅延させるべき秒数
+         * @param {String|Null} wrapClass
+         *     spanにつけるクラス名
+         * @param {Boolean} isLastChar
+         *     最後の1文字 or NOT
+         */
+        _addTransitionSpan: function (character, num, wait, wrapClass, isLastChar) {
             var TYPEWRITE_SETTING = this._typeWriteSetting;
             var delay = (TYPEWRITE_SETTING.talkDelay * (num + 1)) + wait;
             var transition = [
@@ -169,10 +249,15 @@
                 delay + 's'
             ].join(' ');
 
+            // まず作る
             var span = document.createElement('span');
             span.textContent = character;
+
+            // スタイル
             span.style.opacity = 0;
             this._applyPrefixStyle(span, 'transition', transition);
+
+            // クラス名は必要あれば
             if (wrapClass) { span.className = wrapClass; }
 
             this._textElm.appendChild(span);
@@ -182,7 +267,7 @@
 
             // 最後の文字の場合、onEndのコールバックを発火する
             // 最後の文字がtransitionし終わったであろう頃に発火
-            if (isLastOne) {
+            if (isLastChar) {
                 var timeoutDelay = 1000 * (TYPEWRITE_SETTING.duration + delay);
                 var that = this;
                 that._onEndTimer = setTimeout(function() {
@@ -191,9 +276,13 @@
                     console.log('TypeWrite: textParser -> finish with callback delay ->', timeoutDelay);
                 }, timeoutDelay);
             }
-
         },
 
+        /**
+         * 全てのタグのアニメーションを止めて、即座にすべての文字を表示
+         *
+         * @name resetTransition
+         */
         _resetTransition: function () {
             var child = this._textElm.childNodes;
             for (var i in child) {
@@ -206,6 +295,17 @@
             this._dispose();
         },
 
+        /**
+         * プレフィックスが必要なスタイルを、プレフィックスつきで反映
+         *
+         * @name applyPrefixStyle
+         * @param {HTMLNode} elm
+         *     対象となるDOM
+         * @param {String} prop
+         *     つけるスタイルの名前
+         * @param {String} value
+         *     つけるスタイルの値
+         */
         _applyPrefixStyle: function(elm, prop, value) {
             // No prefix
             elm.style[prop] = value;
@@ -219,6 +319,11 @@
             }
         },
 
+        /**
+         * いわゆる終了処理
+         *
+         * @name dispose
+         */
         _dispose: function() {
             console.log('TypeWrite: dispose');
             clearTimeout(this._onEndTimer);
@@ -227,11 +332,8 @@
     };
 
 
-    /**
-     * Exports
-     * AMD, CommonJS support.
-     *
-     */
+    // エクスポート
+    // -----------------------------------------------------------------------------
     var __isAMD      = (typeof global.define === 'function') && global.define.amd;
     var __isCommonJS = (typeof global.exports === 'object') && global.exports;
     if (__isAMD) {
@@ -245,16 +347,25 @@
     }
 
 
+
+    // プライベート関数
+    // -----------------------------------------------------------------------------
     /**
-     * Privates
-     * Just simple implementations.
+     * オブジェクト拡張
+     * いわゆるshallowなやつ
      *
+     * @param {Object} defaults
+     *     このオブジェクトをベースにする
+     * @param {Object} options
+     *     このオブジェクトにあるものを上書きする
+     * @return {Object}
+     *     上書きされたオブジェクトのコピー
      */
     function __extend(defaults, options) {
         options = options || {};
-        var ret     = defaults;
+        var ret = {};
 
-        for (var key in options) {
+        for (var key in defaults) {
             /*jshint forin: false*/
             ret[key] = (options[key] !== undefined) ? options[key]
                                                     : defaults[key];
@@ -263,17 +374,33 @@
         return ret;
     }
 
-    function __getElement(any) {
+    /**
+     * DOM要素かセレクタを引数に、単一のDOMノードを返す
+     *
+     * @param {String|HTMLNode} node
+     *     DOM要素 or セレクタ文字列
+     * @return {HTMLNode}
+     *     DOMノード
+     */
+    function __getElement(node) {
         var elm;
-        if (typeof any === 'string') {
-            elm = global.document.querySelector(any);
+        if (typeof node === 'string') {
+            elm = global.document.querySelector(node);
         } else {
-            elm = any;
+            elm = node;
         }
 
         return elm;
     }
 
+    /**
+     * 先頭文字を大文字に、あとはそのまま
+     *
+     * @param {String} text
+     *     対象の文字列
+     * @return {String}
+     *     処理後のテキスト
+     */
     function __toPascalCase(text) {
         return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
     }
