@@ -363,12 +363,15 @@
      */
     function __extend(defaults, options) {
         options = options || {};
-        var ret = {};
+        var key, ret = {};
 
-        for (var key in defaults) {
+        for (key in defaults) {
             /*jshint forin: false*/
-            ret[key] = (options[key] !== undefined) ? options[key]
-                                                    : defaults[key];
+            ret[key] = defaults[key];
+        }
+        for (key in options) {
+            /*jshint forin: false*/
+            if (options[key] !== undefined) { ret[key] = options[key]; }
         }
 
         return ret;
