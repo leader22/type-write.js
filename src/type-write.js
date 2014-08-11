@@ -137,8 +137,7 @@
                 char,
                 wait = 0,
                 i = 0,
-                l = text.length,
-                lastCount = l - 1;
+                l = text.length;
 
             for (; i < l; i++) {
                 char = text[i];
@@ -147,6 +146,9 @@
                 if (i === 0) {
                     this._onStart && this._onStart();
                 }
+
+                // 最後の文字ならフラグを立てて(iはインデックスなので-1)
+                isLastChar = (i === l - 1);
 
                 // 独自タグ処理開始
                 if (char === META_CHARA.START_TAG) {
@@ -158,6 +160,10 @@
                     switch (char) {
                     case META_CHARA.END_TAG:
                         isTagParsing = false;
+                        // ページの最後の文字がコレだった場合、
+                        // 後続の処理を回すためにループを抜ける
+                        // その時に出力されても困らないよう、空文字にしておく
+                        char = '';
                         break;
 
                     case META_CHARA.BR:
@@ -189,11 +195,14 @@
                     }
 
                     // [再掲] 独自タグ処理中なので、改行以外はループをcontinue
-                    continue;
+                    // ただし最後の1文字の場合はcontinueしない
+                    // 最後のテキスト および ページ全体が独自タグで構成されていた場合、
+                    // 最後まで独自タグ処理中扱いになり、後続の処理が走らないままループが終わってしまう
+                    if (!isLastChar) {
+                        continue;
+                    }
                 }
 
-                // 最後の文字ならフラグを立てて
-                isLastChar = (i === lastCount);
                 // ここでDOMに落ちる
                 if (isWraping) {
                     this._addTransitionSpan(char, i, wait, wrapClass, isLastChar);
