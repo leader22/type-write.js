@@ -136,7 +136,8 @@
                 wrapClass = '',
                 char,
                 wait = 0,
-                i = 0,
+                i = 0, // 独自タグをパースするために、文字列全体を走査するにはこっち
+                readableCharI = 0, // そうではなく、表示だけに関する文字を扱うカウンターはこっち
                 l = text.length;
 
             for (; i < l; i++) {
@@ -205,9 +206,9 @@
 
                 // ここでDOMに落ちる
                 if (isWraping) {
-                    this._addTransitionSpan(char, i, wait, wrapClass, isLastChar);
+                    this._addTransitionSpan(char, readableCharI++, wait, wrapClass, isLastChar);
                 } else {
-                    this._addTransitionSpan(char, i, wait, null, isLastChar);
+                    this._addTransitionSpan(char, readableCharI++, wait, null, isLastChar);
                 }
 
                 // ディレイ系文字なら次の文字を遅延させる
