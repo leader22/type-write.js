@@ -103,7 +103,7 @@
             if (setting) {
                 this._typeWriteSetting = __extend(this._setting.typeWriteSetting, setting);
             }
-            this._textElm.innerHTML = '';
+            this._refreshTextElm();
             this._parseAndTypeWrite(text);
         },
 
@@ -220,6 +220,22 @@
                 }
             }
         },
+
+        /**
+         * コンテナを空っぽにして、次の文字送りに備える
+         * 念のため、強制的にリペイントさせる
+         *
+         * @name refreshTextElm
+         */
+        _refreshTextElm: function() {
+           this._textElm.innerHTML = '';
+
+           // L01とかいうAndroidで画面に文字が焼き付いたので念のため
+           var display = this._textElm.style.display;
+           this._textElm.style.display = 'none';
+           this._textElm.offsetHeight;
+           this._textElm.style.display = display;
+         },
 
         /**
          * <br>を出力する
