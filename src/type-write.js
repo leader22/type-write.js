@@ -26,6 +26,7 @@
     };
     var COMMA_RE = /[,\u3001\uFF64]/;
     var PERIOD_RE = /[\.\u3002\uFF61]/;
+    var ELEMENT_NODE_TYPE = global.Node.ELEMENT_NODE;
 
 
 
@@ -228,14 +229,17 @@
          * @name refreshTextElm
          */
         _refreshTextElm: function() {
-           this._textElm.innerHTML = '';
+            this._textElm.innerHTML = '';
 
-           // L01とかいうAndroidで画面に文字が焼き付いたので念のため
-           var display = this._textElm.style.display;
-           this._textElm.style.display = 'none';
-           this._textElm.offsetHeight;
-           this._textElm.style.display = display;
-         },
+            // L01とかいうAndroidで画面に文字が焼き付いたので念のためリペイント
+            // ただし通常のノードのみ
+            if (this._textElm.nodeType === ELEMENT_NODE_TYPE) {
+                var display = this._textElm.style.display;
+                this._textElm.style.display = 'none';
+                this._textElm.offsetHeight;
+                this._textElm.style.display = display;
+            }
+        },
 
         /**
          * <br>を出力する
