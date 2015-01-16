@@ -301,6 +301,7 @@
         this._buffer.appendChild(span);
 
         // これでtransitionが動いて文字送りを実現する
+        // setTimeoutしないと実行早すぎて目視できない
         setTimeout(function () {
             span.style.opacity = 1;
         });
@@ -323,11 +324,12 @@
      * @name resetTransition
      */
     function _resetTransition() {
-        var child = this._textElm.childNodes;
-        for (var i in child) {
-            /*jshint forin: false*/
-            if (child[i].tagName === 'SPAN') {
-                this._applyPrefixStyle(child[i], 'transition', '');
+        var childs = this._textElm.childNodes,
+            i = 0, l = childs.length, child;
+        for (; i < l; i++) {
+            child = childs[i];
+            if (child.tagName === 'SPAN') {
+                this._applyPrefixStyle(child, 'transition', '');
             }
         }
 
