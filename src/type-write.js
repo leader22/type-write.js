@@ -114,6 +114,7 @@
 
     /**
      * 文字送りを中断し、即座にすべての文字を表示する
+     * 実質のdisposeメソッド
      *
      * @name skip
      */
@@ -135,29 +136,26 @@
         var META_CHARA        = this._metaChar;
         var TYPEWRITE_SETTING = this._typeWriteSetting;
 
-        // コレにいれてく
-        this._buffer = document.createDocumentFragment();
-
         var isTagParsing = false,
             isWraping    = false,
-            isLastChar    = false,
-            wrapClass = '',
+            isLastChar   = false,
+            wrapClass    = '',
             char,
             wait = 0,
             i = 0, // 独自タグをパースするために、文字列全体を走査するにはこっち
             readableCharI = 0, // そうではなく、表示だけに関する文字を扱うカウンターはこっち
-            l = text.length;
+            l = text.length,
+            lastIdx = l - 1;
+
+        // コレにいれてく
+        this._buffer = document.createDocumentFragment();
+        this._onStart && this._onStart();
 
         for (; i < l; i++) {
             char = text[i];
 
-            // 開始時フックあれば実行
-            if (i === 0) {
-                this._onStart && this._onStart();
-            }
-
             // 最後の文字ならフラグを立てて(iはインデックスなので-1)
-            isLastChar = (i === l - 1);
+            isLastChar = i === lastIdx;
 
             // 独自タグ処理開始
             if (char === META_CHARA.START_TAG) {
@@ -212,12 +210,8 @@
                 }
             }
 
-            // ここでDOMに落ちる
-            if (isWraping) {
-                this._addTransitionSpan(char, readableCharI++, wait, wrapClass, isLastChar);
-            } else {
-                this._addTransitionSpan(char, readableCharI++, wait, null, isLastChar);
-            }
+            // ここでDOMの元を作る
+            this._addTransitionSpan(char, readableCharI++, wait, wrapClass, isLastChar);
 
             // ディレイ系文字なら次の文字を遅延させる
             // この計算は文字を送り出した後じゃないとダメ
@@ -246,7 +240,7 @@
         }
 
         // L01とかいうAndroidで画面に文字が焼き付いたので念のためリペイント
-        // ただし通常のノードのみ
+        // ただし通常のノードのみ(fragmentのときは無視)
         if (elm.nodeType === ELEMENT_NODE_TYPE) {
             var display = elm.style.display;
             elm.style.display = 'none';
@@ -317,7 +311,6 @@
             var timeoutDelay = 1000 * (TYPEWRITE_SETTING.duration + delay);
             var that = this;
             that._onEndTimer = setTimeout(function() {
-                that._onEnd && that._onEnd();
                 that._dispose();
                 console.log('TypeWrite: textParser -> finish with callback delay ->', timeoutDelay);
             }, timeoutDelay);
@@ -338,7 +331,6 @@
             }
         }
 
-        this._onEnd && this._onEnd();
         this._dispose();
     }
 
@@ -375,6 +367,8 @@
         console.log('TypeWrite: dispose');
         clearTimeout(this._onEndTimer);
         this._onEndTimer = null;
+
+        this._onEnd && this._onEnd();
     }
 
 
