@@ -11,7 +11,9 @@ var typeWrite = new TypeWrite({
     textElm: outputElm
 });
 
-typeWrite.start(targetText);
+typeWrite.start(targetText, {
+    talkDelay: 0.05
+}, callback);
 ```
 
 ## 独自タグの書式

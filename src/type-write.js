@@ -69,6 +69,7 @@
         this._metaChar         = __extend(DEFAULT_META_CHAR, this._setting.metaChara);
         this._textElm          = __getElement(this._setting.textElm);
 
+        // モジュール単位のコールバック
         this._onStart = this._setting.onStart || null;
         this._onEnd   = this._setting.onEnd   || null;
 
@@ -76,6 +77,9 @@
         this._buffer     = null;
         // コールバック用タイマー
         this._onEndTimer = null;
+
+        // ページ単位のコールバック
+        this._onTypeWriteEndCb = null;
 
         console.log('TypeWrite: initialize', this);
         return this;
@@ -102,11 +106,16 @@
      *     文字送りして表示したいテキスト
      * @param {Object} setting
      *     文字送りに関するオプション(内容はinitialize時に渡すものと同じ)
+     * @param {Function} onEnd
+     *     文字送り後に実行したいコールバック
      */
-    function start(text, setting) {
+    function start(text, setting, onEnd) {
         console.log('TypeWrite: start', text, setting);
         if (setting) {
             this._typeWriteSetting = __extend(this._setting.typeWriteSetting, setting);
+        }
+        if (onEnd && typeof onEnd === 'function') {
+            this._onTypeWriteEndCb = onEnd;
         }
         this._refreshTextElm();
         this._parseAndTypeWrite(text);
@@ -370,7 +379,16 @@
         clearTimeout(this._onEndTimer);
         this._onEndTimer = null;
 
-        this._onEnd && this._onEnd();
+        // ページ毎のコールバック
+        if (this._onTypeWriteEndCb) {
+            this._onTypeWriteEndCb();
+            // こっちは次のために消しとく
+            this._onTypeWriteEndCb = null;
+        }
+        // ページ -> モジュールの順
+        if (this._onEnd) {
+            this._onEnd();
+        }
     }
 
 
