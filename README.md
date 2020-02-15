@@ -1,6 +1,6 @@
 type-write.js
 ===============
-See this [example](http://labs.lealog.net/type-write-sample/). ;D
+See https://leader22.github.io/type-write.js/
 
 ## 使い方
 
